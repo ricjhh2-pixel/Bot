@@ -1,9 +1,5 @@
 const bedrock = require('bedrock-protocol');
-
-const TARGET_PLAYER = '.Harizmaulana'; 
-let tpaInterval = null;
-let isTeleported = false;
-let lastPos = null;
+const readline = require('readline');
 
 const client = bedrock.createClient({
   host: 'donutsmp.net',
@@ -12,63 +8,31 @@ const client = bedrock.createClient({
   offline: false
 });
 
-function sendCommand(cmd) {
-  client.queue('text', {
-    type: 'chat',
-    needs_translation: false,
-    source_name: client.username,
-    xuid: '',
-    platform_chat_id: '',
-    message: cmd
-  });
-  console.log(`[Sent]: ${cmd}`);
-}
-
-// 1. Saat bot baru masuk ke server
+// Bot login & standby
 client.on('spawn', () => {
-  console.log('✅ Bot sudah spawn, mulai spam TPA...');
-  isTeleported = false;
-
-  // Spam TPA setiap 10 detik
-  tpaInterval = setInterval(() => {
-    if (!isTeleported) {
-      sendCommand(`/tpa ${TARGET_PLAYER}`);
-    }
-  }, 10000);
+  console.log('✅ Bot berhasil masuk ke server DonutSMP!');
+  console.log('--- Siap menerima perintah manual dari Console ---');
 });
 
-// 2. Deteksi Perpindahan (Teleportasi)
-client.on('move_player', (packet) => {
-  const currentPos = packet.position;
+// Fitur ngetik manual lewat Console / Terminal
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
-  if (lastPos && !isTeleported) {
-    const dx = Math.abs(currentPos.x - lastPos.x);
-    const dz = Math.abs(currentPos.z - lastPos.z);
-
-    // Kalau bot pindah tiba-tiba > 10 block, berarti TPA sukses
-    if (dx > 10 || dz > 10) {
-      console.log('🎉 Teleport terdeteksi! Menghentikan TPA.');
-      isTeleported = true;
-      clearInterval(tpaInterval);
-
-      // Tunggu 3 detik biar game stabil dulu
-      setTimeout(() => {
-        sendCommand('/sethome 1');
-        console.log('📌 Posisi baru sudah di-sethome!');
-      }, 3000);
-    }
+rl.on('line', (line) => {
+  const cmd = line.trim();
+  if (cmd.length > 0) {
+    client.queue('text', {
+      type: 'chat',
+      needs_translation: false,
+      source_name: client.username,
+      xuid: '',
+      platform_chat_id: '',
+      message: cmd
+    });
+    console.log(`[Sent]: ${cmd}`);
   }
-  lastPos = currentPos;
-});
-
-// 3. Deteksi Respawn (Bot mati lalu hidup lagi)
-client.on('respawn', () => {
-  console.log('💀 Bot mati/respawn! Menuju ke Home...');
-  
-  // Tunggu 5 detik agar bot benar-benar bisa gerak/command
-  setTimeout(() => {
-    sendCommand('/home 1');
-  }, 5000);
 });
 
 client.on('disconnect', (packet) => console.log('❌ Disconnect:', packet.reason));
